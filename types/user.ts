@@ -1,6 +1,19 @@
 export type EducationLevel = "high-school" | "university" | "graduate" | "other" | "";
 export type Role = "debater" | "judge" | "coach" | "institutional_account";
 
+export interface UserJSON{
+    username: string;
+    email: string;
+    fullName: string;
+    country: string; 
+    prefLang: string;
+    uid: string;
+    displayName: string;
+    educationLevel: EducationLevel;
+    readonly role: Role;
+    creationDate: Date;
+}
+
 export class User{
     public username: string;
     public email: string;
@@ -36,7 +49,7 @@ export class User{
         this.creationDate = new Date();
     }
 
-    getJSON(){
+    getJSON(): UserJSON{
         return{
             username: this.username,
             email: this.email,
