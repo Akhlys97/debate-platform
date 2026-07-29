@@ -1,5 +1,15 @@
+import { Timestamp } from "firebase/firestore";
+
 export type EducationLevel = "high-school" | "university" | "graduate" | "other" | "";
 export type Role = "debater" | "judge" | "coach" | "institutional_account";
+export type UserFirestoreData = Omit<UserJSON, "creationDate"> & { creationDate: Timestamp };
+
+export function convertFirestoreData(raw: UserFirestoreData): UserJSON {
+    return{
+        ...raw,
+        creationDate: raw.creationDate.toDate(),
+    };
+}
 
 export interface UserJSON{
     username: string;
