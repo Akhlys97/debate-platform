@@ -6,7 +6,7 @@ import {
   convertFirestoreData,
 } from "@/types/user";
 import { Role } from "@/types/user";
-import { EducationLevel } from "@/types/user";
+import { EducationLevel, DebateFormat } from "@/types/user";
 import { Debater } from "@/types/debater";
 import { Judge } from "@/types/judge";
 import { Coach } from "@/types/coach";
@@ -24,7 +24,8 @@ export interface SignupFormData {
   country: string;
   role: Role;
   fullName?: string;
-  prefLang?: string;
+  prefLang?: string[];
+  debateFormat?: DebateFormat[];
   displayName?: string;
   educationLevel?: EducationLevel;
 }
@@ -38,6 +39,7 @@ function createUserInstance(formData: SignupFormData, uid: string): User {
       uid,
       formData.fullName,
       formData.prefLang,
+      formData.debateFormat,
       formData.displayName,
       formData.educationLevel,
     );
@@ -50,6 +52,7 @@ function createUserInstance(formData: SignupFormData, uid: string): User {
       uid,
       formData.fullName,
       formData.prefLang,
+      formData.debateFormat,
       formData.displayName,
       formData.educationLevel,
     );
@@ -62,6 +65,7 @@ function createUserInstance(formData: SignupFormData, uid: string): User {
       uid,
       formData.fullName,
       formData.prefLang,
+      formData.debateFormat,
       formData.displayName,
       formData.educationLevel,
     );
