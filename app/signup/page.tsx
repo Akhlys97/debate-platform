@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { getNames } from "country-list";
-import { Role } from "@/types/user";
+import ISO6391 from "iso-639-1";
+import { Role, EducationLevel } from "@/types/user";
 
 export function SignUpScreen(){
   const [email, setEmail] = useState("");
@@ -12,17 +13,23 @@ export function SignUpScreen(){
   const [country, setCountry] = useState("");
   const [prefLang, setPrefLang] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [educationLevel, setEducationLevel] = useState("");
+  const [educationLevel, setEducationLevel] = useState <EducationLevel | "">("");
   const [role, setRole] = useState <Role | "">("");
   const [step, setStep] = useState(1);
 
   const countryNames = getNames();
+  const languages = ISO6391.getLanguages(ISO6391.getAllCodes());
+  const levels: { value: EducationLevel; label: string }[] = [
+    {value: "high-school", label: "High School"},
+    {value: "university", label: "University"},
+    {value: "graduate", label: "Graduate"},
+    {value: "other", label: "Other"}
+  ]
   const roles: { value: Role; label: string }[] = [
   { value: "debater", label: "Debater" },
   { value: "judge", label: "Judge" },
   { value: "coach", label: "Coach" },
-  { value: "institutional_account", label: "Institutional Account" },
-];
+  { value: "institutional_account", label: "Institutional Account" }];
 
   
   function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
@@ -101,11 +108,56 @@ export function SignUpScreen(){
     );
   }
 
+  function renderStep2(){
+    return(
+      <>
+        <div className="flex flex-col gap-1">
+            <button type="button" className="border-2 rounded" onClick={() => setStep(1)}> Back </button>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="fullName" className="text-sm font-medium text-gray-700">
+            Full Name
+          </label>
+          <input
+            type="text"
+            id="fullName"
+            name="fullName"
+            className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => setFullName(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="displayName" className="text-sm font-medium text-gray-700">
+            Display Name
+          </label>
+          <input
+            type="text"
+            id="displayName"
+            name="displayName"
+            className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => setDisplayName(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="education-select" className="text-sm font-medium text-gray-700">
+            Education Level
+          </label>
+          <select value={educationLevel} name="education-select" id="education-select" onChange={(e) => {setEducationLevel(e.target.value as EducationLevel)}} autoComplete="off" >
+            <option value="" disabled>Select your education level</option>
+            {levels.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <form className="flex flex-col gap-4 w-full max-w-sm p-8 bg-white rounded-lg shadow-md" onSubmit={handleSubmit}>
         {step === 1 && renderStep1()}
-        {/*step === 2 && renderStep2()*/}
+        {step === 2 && renderStep2()}
       </form>
     </div>
   );
