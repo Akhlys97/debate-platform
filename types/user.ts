@@ -3,6 +3,7 @@ import { Timestamp } from "firebase/firestore";
 export type EducationLevel = "high-school" | "university" | "graduate" | "other" | "";
 export type Role = "debater" | "judge" | "coach" | "institutional_account";
 export type UserFirestoreData = Omit<UserJSON, "creationDate"> & { creationDate: Timestamp };
+export type DebateFormat = "BP" | "AP" | "WSDC";
 
 export function convertFirestoreData(raw: UserFirestoreData): UserJSON {
     return{
@@ -16,7 +17,8 @@ export interface UserJSON{
     email: string;
     fullName: string;
     country: string; 
-    prefLang: string;
+    prefLang: string[];
+    debateFormat: DebateFormat[];
     uid: string;
     displayName: string;
     educationLevel: EducationLevel;
@@ -29,7 +31,8 @@ export class User{
     public email: string;
     public fullName: string;
     public country: string; 
-    public prefLang: string;
+    public prefLang: string[];
+    public debateFormat: DebateFormat[];
     public uid: string;
     public displayName: string;
     public educationLevel: EducationLevel;
@@ -43,7 +46,8 @@ export class User{
         uid: string, 
         role: Role,
         fullName: string = "",
-        prefLang: string = "",
+        prefLang: string[] = [],
+        debateFormat: DebateFormat[] = [],
         displayName: string = username,
         educationLevel: EducationLevel = ""
     ){
@@ -52,6 +56,7 @@ export class User{
         this.fullName = fullName;
         this.country = country;
         this.prefLang = prefLang;
+        this.debateFormat = debateFormat;
         this.uid = uid;
         this.displayName = displayName;
         this.educationLevel = educationLevel;
@@ -66,6 +71,7 @@ export class User{
             fullName: this.fullName,
             country: this.country,
             prefLang: this.prefLang,
+            debateFormat: this.debateFormat,
             uid: this.uid,
             displayName: this.displayName,
             educationLevel: this.educationLevel,
@@ -75,6 +81,6 @@ export class User{
     }
 
     get isProfileComplete(): boolean {
-        return !!(this.fullName && this.prefLang && this.displayName && this.educationLevel);
+        return !!(this.fullName && this.prefLang.length !== 0 && this.debateFormat.length !== 0 && this.displayName && this.educationLevel);
     }
 }

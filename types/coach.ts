@@ -1,4 +1,4 @@
-import { User, EducationLevel } from './user'
+import { User, EducationLevel, DebateFormat } from './user'
 
 export class Coach extends User{
 
@@ -8,12 +8,13 @@ export class Coach extends User{
         country: string, 
         uid: string, 
         fullName: string = "",
-        prefLang: string = "",
+        prefLang: string[] = [],
+        debateFormat: DebateFormat[] = [],
         displayName: string = username,
         educationLevel: EducationLevel = ""
     ){
         super(username, email, country, uid,
-             "coach", fullName, prefLang, 
+             "coach", fullName, prefLang, debateFormat,
              displayName, educationLevel);
     }
 }

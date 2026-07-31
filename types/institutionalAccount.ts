@@ -16,7 +16,7 @@ export class InstitutionalAccount extends User{
         displayName: string = username
     ){
         super(username, email, country, uid, "institutional_account",
-            "", "", displayName
+            "", [], [], displayName
         );
     }
 
@@ -25,5 +25,9 @@ export class InstitutionalAccount extends User{
             ...super.getJSON(),
             verificationStatus: this.verificationStatus
         };
+    }
+
+    get isProfileComplete(): boolean{
+        return !!(this.displayName);
     }
 }
