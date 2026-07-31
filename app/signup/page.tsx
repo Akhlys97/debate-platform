@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { getNames } from "country-list";
 import ISO6391 from "iso-639-1";
-import { Role, EducationLevel } from "@/types/user";
+import { Role, EducationLevel, DebateFormat } from "@/types/user";
 
 export function SignUpScreen(){
   const [email, setEmail] = useState("");
@@ -11,7 +11,8 @@ export function SignUpScreen(){
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("");
-  const [prefLang, setPrefLang] = useState("");
+  const [prefLang, setPrefLang] = useState<string[]>([]);
+  const [debateFormat, setDebateFormat] = useState<DebateFormat[]>([]);
   const [displayName, setDisplayName] = useState("");
   const [educationLevel, setEducationLevel] = useState <EducationLevel | "">("");
   const [role, setRole] = useState <Role | "">("");
@@ -26,15 +27,31 @@ export function SignUpScreen(){
     {value: "other", label: "Other"}
   ]
   const roles: { value: Role; label: string }[] = [
-  { value: "debater", label: "Debater" },
-  { value: "judge", label: "Judge" },
-  { value: "coach", label: "Coach" },
-  { value: "institutional_account", label: "Institutional Account" }];
+    { value: "debater", label: "Debater" },
+    { value: "judge", label: "Judge" },
+    { value: "coach", label: "Coach" },
+    { value: "institutional_account", label: "Institutional Account" }
+  ];
+  const debateFormats: { value: DebateFormat; label: string }[] = [
+    { value: "BP", label: "British Parliamentary" },
+    { value: "AP", label: "Asian Parliamentary" },
+    { value: "WSDC", label: "World Schools" },
+  ]; 
+
 
   
   function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
     e.preventDefault();
-    console.log(email, " ", password, " ", username, " ", country, " ", role);
+    console.log(email);
+    console.log(password);
+    console.log(username);
+    console.log(fullName);
+    console.log(country);
+    console.log(prefLang);
+    console.log(debateFormat);
+    console.log(displayName);
+    console.log(educationLevel);
+    console.log(role);
   }
 
   function renderStep1(){
@@ -148,6 +165,52 @@ export function SignUpScreen(){
             <option value="" disabled>Select your education level</option>
             {levels.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="prefLang-select" className="text-sm font-medium text-gray-700">
+            Preferred Languages
+          </label>
+          <select
+            multiple
+            value={prefLang}
+            name="prefLang-select"
+            id="prefLang-select"
+            onChange={(e) => {
+              const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
+              setPrefLang(selected);
+            }}
+            className="border border-gray-300 rounded px-3 py-2"
+            autoComplete="off"
+          >
+            {languages.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Debate Formats</label>
+          {debateFormats.map((f) => (
+            <label key={f.value} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={debateFormat.includes(f.value)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setDebateFormat([...debateFormat, f.value]);
+                  } else {
+                    setDebateFormat(debateFormat.filter((item) => item !== f.value));
+                  }
+                }}
+                autoComplete="off"
+              />
+              {f.label}
+            </label>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1">
+            <button type="submit" className="border-2 rounded"> Try </button>
         </div>
       </>
     );
