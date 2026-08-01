@@ -8,7 +8,7 @@ import { SignupFormData, signUpUser } from "@/lib/auth";
 import { isValidEmail } from "@/lib/validation";
 
 
-export function SignUpScreen(){
+export default function SignUpScreen(){
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -168,9 +168,10 @@ export function SignUpScreen(){
         <div className="flex flex-col gap-1">
             <button type="button" className="border-2 rounded" onClick={() => setStep(1)}> Back </button>
         </div>
+        {role !== "institutional_account" && (
         <div className="flex flex-col gap-1">
           <label htmlFor="fullName" className="text-sm font-medium text-gray-700">
-            Full Name
+            Full Name (Optional)
           </label>
           <input
             type="text"
@@ -181,9 +182,10 @@ export function SignUpScreen(){
             autoComplete="off"
           />
         </div>
+        )}
         <div className="flex flex-col gap-1">
           <label htmlFor="displayName" className="text-sm font-medium text-gray-700">
-            Display Name
+            Display Name (Optional, defaults to username)
           </label>
           <input
             type="text"
@@ -194,18 +196,21 @@ export function SignUpScreen(){
             autoComplete="off"
           />
         </div>
+        {role !== "institutional_account" && (          
         <div className="flex flex-col gap-1">
           <label htmlFor="education-select" className="text-sm font-medium text-gray-700">
-            Education Level
+            Education Level (Optional)
           </label>
           <select value={educationLevel} name="education-select" id="education-select" onChange={(e) => {setEducationLevel(e.target.value as EducationLevel)}} autoComplete="off" >
             <option value="" disabled>Select your education level</option>
             {levels.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
           </select>
         </div>
+        )}
+        {role !== "institutional_account" && (
         <div className="flex flex-col gap-1">
           <label htmlFor="prefLang-select" className="text-sm font-medium text-gray-700">
-            Preferred Languages
+            Preferred Languages (Optional)
           </label>
           <select
             multiple
@@ -226,8 +231,10 @@ export function SignUpScreen(){
             ))}
           </select>
         </div>
+        )}
+        {role !== "institutional_account" && (
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Debate Formats</label>
+          <label className="text-sm font-medium text-gray-700">Debate Formats (Optional)</label>
           {debateFormats.map((f) => (
             <label key={f.value} className="flex items-center gap-2">
               <input
@@ -246,6 +253,7 @@ export function SignUpScreen(){
             </label>
           ))}
         </div>
+        )}
         <div className="flex flex-col gap-1">
             <button type="submit" className="border-2 rounded" disabled={isSubmitting}> Submit </button>
         </div>
