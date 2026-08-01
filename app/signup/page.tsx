@@ -4,6 +4,9 @@ import { useState } from "react";
 import { getNames } from "country-list";
 import ISO6391 from "iso-639-1";
 import { Role, EducationLevel, DebateFormat } from "@/types/user";
+import { SignupFormData, signUpUser } from "@/lib/auth";
+import { isValidEmail } from "@/lib/validation";
+
 
 export function SignUpScreen(){
   const [email, setEmail] = useState("");
@@ -38,20 +41,54 @@ export function SignUpScreen(){
     { value: "WSDC", label: "World Schools" },
   ]; 
 
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   
-  function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
     e.preventDefault();
-    console.log(email);
-    console.log(password);
-    console.log(username);
-    console.log(fullName);
-    console.log(country);
-    console.log(prefLang);
-    console.log(debateFormat);
-    console.log(displayName);
-    console.log(educationLevel);
-    console.log(role);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsSubmitting(true);
+    const formData: SignupFormData = {
+      username: username.trim(),
+      email: email.trim(),
+      country,
+      role: role as Role,
+      fullName: fullName.trim(),
+      prefLang,
+      debateFormat,
+      displayName: displayName.trim() || username.trim(),
+      educationLevel: educationLevel as EducationLevel,
+    };
+    try{
+      await signUpUser(formData, password);
+      setSuccessMessage("Successfully signed up");
+    }
+    catch (error){
+      setErrorMessage("Signup wasn't completed successfully. Try again.");
+    }
+    finally{
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleContinue(){
+    setErrorMessage("");
+    if (!username.trim() || !email.trim() || !password || !role || !country){
+      setErrorMessage("Please fill all the fields before you continue");
+      return;
+    }
+    if(password.length < 8){
+      setErrorMessage("Your password should be at least 8 characters long");
+      return;
+    }
+    if(!isValidEmail(email)){
+      setErrorMessage("Please enter a valid email address");
+      return;
+    } 
+    setStep(2);
+    return;
   }
 
   function renderStep1(){
@@ -119,7 +156,7 @@ export function SignUpScreen(){
           </select>
         </div>
         <div className="flex flex-col gap-1">
-            <button type="button" className="border-2 rounded" onClick={() => setStep(2)}>Continue</button>
+            <button type="button" className="border-2 rounded" onClick={() => handleContinue()}>Continue</button>
         </div>
         </>
     );
@@ -210,7 +247,7 @@ export function SignUpScreen(){
           ))}
         </div>
         <div className="flex flex-col gap-1">
-            <button type="submit" className="border-2 rounded"> Try </button>
+            <button type="submit" className="border-2 rounded" disabled={isSubmitting}> Submit </button>
         </div>
       </>
     );
@@ -221,6 +258,12 @@ export function SignUpScreen(){
       <form className="flex flex-col gap-4 w-full max-w-sm p-8 bg-white rounded-lg shadow-md" onSubmit={handleSubmit}>
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
+        {errorMessage && 
+        (<div className="text-red-700 text-sm font-medium bg-red-50 border border-red-200 rounded px-3 py-2">{errorMessage}</div>)
+        }
+        {successMessage && 
+        (<div className="text-green-700 text-sm font-medium bg-green-50 border border-green-200 rounded px-3 py-2">{successMessage}</div>)
+        }
       </form>
     </div>
   );
