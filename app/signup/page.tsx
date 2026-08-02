@@ -6,6 +6,7 @@ import ISO6391 from "iso-639-1";
 import { Role, EducationLevel, DebateFormat } from "@/types/user";
 import { SignupFormData, signUpUser } from "@/lib/auth";
 import { isValidEmail } from "@/lib/validation";
+import Link from "next/link";
 
 
 export default function SignUpScreen(){
@@ -158,6 +159,12 @@ export default function SignUpScreen(){
         <div className="flex flex-col gap-1">
             <button type="button" className="border-2 rounded" onClick={() => handleContinue()}>Continue</button>
         </div>
+        <p className="text-sm text-gray-600 text-center">
+          Already have an account? {" "}
+          <Link href="/login" className="text-blue-600 hover:underline">
+            Log in
+          </Link>
+        </p>
         </>
     );
   }
@@ -255,7 +262,7 @@ export default function SignUpScreen(){
         </div>
         )}
         <div className="flex flex-col gap-1">
-            <button type="submit" className="border-2 rounded" disabled={isSubmitting}> Submit </button>
+            <button type="submit" className="border-2 rounded" disabled={isSubmitting}> Sign Up </button>
         </div>
       </>
     );
