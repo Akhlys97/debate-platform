@@ -109,13 +109,7 @@ export async function signUpUser(formData: SignupFormData, password: string) {
   }
 }
 
-export async function logInUser(email: string, password: string) {
-  const userCredential = await signInWithEmailAndPassword(
-    auth,
-    email,
-    password,
-  );
-  const uid: string = userCredential.user.uid;
+export async function fetchProfile(uid: string): Promise<UserJSON>{
   const userDocRef = doc(db, "users", uid);
   const docSnap = await getDoc(userDocRef);
   if (docSnap.exists()) {
@@ -127,4 +121,14 @@ export async function logInUser(email: string, password: string) {
     console.error("Orphan user case.");
     throw new Error("Orphan user case.");
   }
+}
+
+export async function logInUser(email: string, password: string) {
+  const userCredential = await signInWithEmailAndPassword(
+    auth,
+    email,
+    password,
+  );
+  const uid: string = userCredential.user.uid;
+  return await fetchProfile(uid);
 }
