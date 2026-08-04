@@ -8,7 +8,6 @@ import { SignupFormData, signUpUser } from "@/lib/auth";
 import { isValidEmail } from "@/lib/validation";
 import Link from "next/link";
 
-
 export default function SignUpScreen(){
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
