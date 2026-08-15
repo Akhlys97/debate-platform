@@ -1,8 +1,18 @@
 import { User, UserJSON } from './user'
 import { VerificationStatus } from './common';
+import { Timestamp } from 'firebase/firestore';
+
+export type InstitutionalAccountFirestoreData = Omit<InstitutionalAccountJSON, "creationDate"> & {creationDate: Timestamp};
 
 export interface InstitutionalAccountJSON extends UserJSON{
     verificationStatus: VerificationStatus;
+}
+
+export function convertInstitutionalAccountFirestoreData(raw: InstitutionalAccountFirestoreData): InstitutionalAccountJSON{
+    return{
+        ...raw,
+        creationDate: raw.creationDate.toDate(),
+    };
 }
 
 export class InstitutionalAccount extends User{
