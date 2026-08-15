@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { logInUser } from "@/lib/auth";
 import Link from "next/link";
+//import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen(){
     const [email, setEmail] = useState("");
@@ -28,6 +29,7 @@ export default function LoginScreen(){
 
     return(
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
+            {/*JSON.stringify(useAuth(), null, 2)*/}
             <form className="flex flex-col gap-4 w-full max-w-sm p-8 bg-white rounded-lg shadow-md" onSubmit={handleSubmit}>
                 <div className="flex flex-col gap-1">
                 <label htmlFor="email" className="text-sm font-medium text-gray-700">
