@@ -10,7 +10,7 @@ import { EducationLevel, DebateFormat } from "@/types/user";
 import { Debater } from "@/types/debater";
 import { Judge } from "@/types/judge";
 import { Coach } from "@/types/coach";
-import { InstitutionalAccount } from "@/types/institutionalAccount";
+import { InstitutionalAccount, InstitutionalAccountJSON, convertInstitutionalAccountFirestoreData, InstitutionalAccountFirestoreData } from "@/types/institutionalAccount";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -109,13 +109,13 @@ export async function signUpUser(formData: SignupFormData, password: string) {
   }
 }
 
-export async function fetchProfile(uid: string): Promise<UserJSON>{
+export async function fetchProfile(uid: string): Promise<UserJSON | InstitutionalAccountJSON>{
   const userDocRef = doc(db, "users", uid);
   const docSnap = await getDoc(userDocRef);
   if (docSnap.exists()) {
-    const rawData = docSnap.data() as UserFirestoreData;
-    const data = convertFirestoreData(rawData);
-    return data;
+    const rawData = docSnap.data();
+    if (rawData.role === "institutional_account") return convertInstitutionalAccountFirestoreData(rawData as InstitutionalAccountFirestoreData);
+    else return convertFirestoreData(rawData as UserFirestoreData);
   } 
   else {
     console.error("Orphan user case.");
