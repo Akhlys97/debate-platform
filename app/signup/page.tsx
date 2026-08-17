@@ -7,6 +7,8 @@ import { Role, EducationLevel, DebateFormat } from "@/types/user";
 import { SignupFormData, signUpUser } from "@/lib/auth";
 import { isValidEmail } from "@/lib/validation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { isInstitutionalAccount } from "@/types/institutionalAccount";
 
 export default function SignUpScreen(){
   const [email, setEmail] = useState("");
@@ -20,6 +22,7 @@ export default function SignUpScreen(){
   const [educationLevel, setEducationLevel] = useState <EducationLevel | "">("");
   const [role, setRole] = useState <Role | "">("");
   const [step, setStep] = useState(1);
+  const router = useRouter();
 
   const countryNames = getNames();
   const languages = ISO6391.getLanguages(ISO6391.getAllCodes());
@@ -62,8 +65,11 @@ export default function SignUpScreen(){
       educationLevel: educationLevel as EducationLevel,
     };
     try{
-      await signUpUser(formData, password);
-      setSuccessMessage("Successfully signed up");
+      const user = await signUpUser(formData, password);
+      if(isInstitutionalAccount(user)){
+        router.push(user.verificationStatus === "approved" ? "/" : "/apply");
+      }
+      else setSuccessMessage("Successfully signed up");
     }
     catch (error){
       setErrorMessage("Signup wasn't completed successfully. Try again.");

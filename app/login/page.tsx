@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { logInUser } from "@/lib/auth";
 import Link from "next/link";
+import { isInstitutionalAccount } from "@/types/institutionalAccount";
+import { useRouter } from "next/navigation";
 //import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen(){
@@ -10,6 +12,7 @@ export default function LoginScreen(){
     const [password, setPassword] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+    const router = useRouter();
 
     async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>){
         e.preventDefault();
@@ -17,7 +20,8 @@ export default function LoginScreen(){
         setErrorMessage("");
         try{
             const userData = await logInUser(email, password);
-            console.log(userData);
+            if (isInstitutionalAccount(userData)) router.push(userData.verificationStatus === "approved" ? "/" : "/apply");
+            else router.push("/");
         }
         catch{
             setErrorMessage("Invalid email or password. Please try again.");

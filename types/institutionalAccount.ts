@@ -8,6 +8,10 @@ export interface InstitutionalAccountJSON extends UserJSON{
     verificationStatus: VerificationStatus;
 }
 
+export function isInstitutionalAccount(user: UserJSON | InstitutionalAccountJSON): user is InstitutionalAccountJSON {
+  return user.role === "institutional_account";
+}
+
 export function convertInstitutionalAccountFirestoreData(raw: InstitutionalAccountFirestoreData): InstitutionalAccountJSON{
     return{
         ...raw,

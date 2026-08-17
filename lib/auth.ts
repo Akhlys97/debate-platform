@@ -81,7 +81,7 @@ function createUserInstance(formData: SignupFormData, uid: string): User {
   }
 }
 
-export async function signUpUser(formData: SignupFormData, password: string) {
+export async function signUpUser(formData: SignupFormData, password: string): Promise<UserJSON | InstitutionalAccountJSON> {
   const userCredential = await createUserWithEmailAndPassword(
     auth,
     formData.email,
@@ -90,9 +90,10 @@ export async function signUpUser(formData: SignupFormData, password: string) {
   const uid: string = userCredential.user.uid;
 
   try {
-    const jsonData: UserJSON = createUserInstance(formData, uid).getJSON();
+    const jsonData: UserJSON | InstitutionalAccountJSON = createUserInstance(formData, uid).getJSON();
     const userDocRef = doc(db, "users", uid);
     await setDoc(userDocRef, jsonData);
+    return jsonData;
   } 
   catch (error) {
     try {
