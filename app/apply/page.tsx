@@ -46,7 +46,7 @@ export default function ApplyScreen(){
             <div>
             <p>Only institutional accounts can access this page.</p>
             <Link href="/">Return home</Link>
-        </div>
+            </div>
         );
     }
     if (pendingCheckLoading){
