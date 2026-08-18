@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDocs, query, where, writeBatch } from "firebase/firestore";
 import { db } from "./firebase"; 
 import { ApplicationFirestoreData, ApplicationJSON, convertApplicationFirestoreData } from "@/types/application";
 
@@ -33,4 +33,11 @@ export async function fetchPendingApplications(): Promise<(ApplicationJSON & {id
         const data = convertApplicationFirestoreData(docSnap.data() as ApplicationFirestoreData);
         return { ...data, id: docSnap.id };
     });
+}
+
+export async function decideApplication(applicationId: string, uid: string, decision: "approved" | "rejected"): Promise<void> {
+    const batch = writeBatch(db);
+    batch.update(doc(db, "applications", applicationId), {status: decision});
+    batch.update(doc(db, "users", uid), {verificationStatus: decision});
+    await batch.commit();
 }

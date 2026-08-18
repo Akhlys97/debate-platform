@@ -2,12 +2,11 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { isAdmin } from "@/lib/admin";
-import { fetchPendingApplications } from "@/lib/applications";
+import { decideApplication, fetchPendingApplications } from "@/lib/applications";
 import { ApplicationJSON } from "@/types/application";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
 
 export default function AdminScreen(){
     const router = useRouter();
@@ -17,6 +16,19 @@ export default function AdminScreen(){
     const [applications, setApplications] = useState<(ApplicationJSON & {id: string})[]>([]);
     const [applicationsLoading, setApplicationsLoading] = useState(true);
     const loadingScreen = <div>Loading...</div>;
+    const [errorMessage, setErrorMessage] = useState("");
+
+    async function handleDecision(applicationId: string, uid: string, decision: "approved" | "rejected"){
+        setErrorMessage("");
+        try{
+            await decideApplication(applicationId, uid, decision);
+            setApplications((prev) => prev.filter((app) => app.id !== applicationId));
+        }
+        catch (error){
+            console.error("Failed to decide application", error);
+            setErrorMessage("Failed to decide application");
+        }
+    }
 
     useEffect(() => {
         if (!authLoading && !user) router.push("/login");
@@ -61,6 +73,11 @@ export default function AdminScreen(){
 
     return (
     <div className="p-8">
+        {errorMessage && (
+        <div className="text-red-700 text-sm font-medium bg-red-50 border border-red-200 rounded px-3 py-2 mb-4">
+            {errorMessage}
+        </div>
+        )}
         <h1 className="text-xl font-semibold mb-4">Pending Applications</h1>
         {applications.length === 0 ? (
         <p>No pending applications.</p>
@@ -71,8 +88,8 @@ export default function AdminScreen(){
             <p>{app.contactAddress}</p>
             <p className="text-sm text-gray-500">{app.submittedAt.toLocaleDateString()}</p>
             <div className="flex gap-2 mt-2">
-                <button className="border-2 rounded px-3 py-1">Approve</button>
-                <button className="border-2 rounded px-3 py-1">Reject</button>
+                <button className="border-2 rounded px-3 py-1" onClick={() => handleDecision(app.id, app.uid, "approved")}>Approve</button>
+                <button className="border-2 rounded px-3 py-1" onClick={() => handleDecision(app.id, app.uid, "rejected")}>Reject</button>
             </div>
             </div>
         ))
