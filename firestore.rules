@@ -8,6 +8,7 @@ service cloud.firestore {
       allow update: if request.auth != null 
         && request.auth.uid == uid
         && request.resource.data.verificationStatus == resource.data.verificationStatus;
+        && request.resource.data.communityIds == resource.data.communityIds;
       allow update: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["verificationStatus"]);

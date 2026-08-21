@@ -24,6 +24,7 @@ export interface UserJSON{
     educationLevel: EducationLevel;
     readonly role: Role;
     creationDate: Date;
+    communityIds: string[];
 }
 
 export class User{
@@ -38,6 +39,7 @@ export class User{
     public educationLevel: EducationLevel;
     public readonly role: Role;
     public creationDate: Date;
+    public communityIds: string[];
 
     constructor(
         username: string,
@@ -62,6 +64,7 @@ export class User{
         this.educationLevel = educationLevel;
         this.role = role;
         this.creationDate = new Date();
+        this.communityIds = [];
     }
 
     getJSON(): UserJSON{
@@ -76,7 +79,8 @@ export class User{
             displayName: this.displayName,
             educationLevel: this.educationLevel,
             role: this.role,
-            creationDate: this.creationDate
+            creationDate: this.creationDate,
+            communityIds: this.communityIds
         }
     }
 
