@@ -9,6 +9,8 @@ import { isValidEmail } from "@/lib/validation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isInstitutionalAccount } from "@/types/institutionalAccount";
+import { joinCountryCommunity } from "@/lib/communities";
+
 
 export default function SignUpScreen(){
   const [email, setEmail] = useState("");
@@ -66,6 +68,12 @@ export default function SignUpScreen(){
     };
     try{
       const user = await signUpUser(formData, password);
+      try{
+        await joinCountryCommunity(user.uid, user.country, user.role);
+      }
+      catch (joinError){
+        console.error("Community auto-join failed:", joinError);
+      }
       if(isInstitutionalAccount(user)){
         router.push(user.verificationStatus === "approved" ? "/" : "/apply");
       }
