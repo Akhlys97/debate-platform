@@ -1,37 +1,72 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function newlyAddedIds(before, after) {
+      return after.removeAll(before);
+    }
+
+    function isValidSingleCommunityJoin(uid, before, after) {
+      let added = newlyAddedIds(before, after);
+      return after.size() == before.size() + 1
+        && after.hasAll(before)
+        && added.size() == 1
+        && existsAfter(/databases/$(database)/documents/communities/$(added[0])/members/$(uid));
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid && request.auth.uid == request.resource.data.uid;
-      allow update: if request.auth != null 
+      allow update: if request.auth != null
         && request.auth.uid == uid
-        && request.resource.data.get('verificationStatus', null) == resource.data.get('verificationStatus', null);
+        && request.resource.data.get('verificationStatus', null) == resource.data.get('verificationStatus', null)
+        && (
+          request.resource.data.communityIds == resource.data.communityIds
+          || isValidSingleCommunityJoin(uid, resource.data.communityIds, request.resource.data.communityIds)
+        );
       allow update: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["verificationStatus"]);
     }
+
     match /applications/{applicationId} {
-      allow read: if request.auth != null 
-        && (resource.data.uid == request.auth.uid 
+      allow read: if request.auth != null
+        && (resource.data.uid == request.auth.uid
             || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == "pending"
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "institutional_account";
-      allow update: if request.auth != null 
+      allow update: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"]);
     }
+
     match /admins/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
     }
+
     match /communities/{communityId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.type != "global"
+        && (
+          request.resource.data.type != "city"
+          || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        )
+        && (
+          request.resource.data.type != "country"
+          || (
+            communityId.matches('^country_[A-Z]{2}$')
+            && existsAfter(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+          )
+        );
+
       match /members/{memberUid} {
         allow read: if request.auth != null;
-        allow create: if request.auth != null && request.auth.uid == memberUid;
+        allow create: if request.auth != null
+          && request.auth.uid == memberUid
+          && getAfter(/databases/$(database)/documents/communities/$(communityId)).data.entranceType == "open";
       }
     }
   }

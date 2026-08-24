@@ -1,5 +1,5 @@
 import { CommunityFirestoreData, CommunityJSON, CommunityType, convertCommunityFirestoreData, EntranceType, Rank } from "@/types/community";
-import { addDoc, arrayUnion, collection, doc, getDoc, runTransaction, Transaction } from "firebase/firestore";
+import { addDoc, arrayUnion, collection, doc, getDoc, runTransaction, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 import { convertFirestoreData, UserFirestoreData } from "@/types/user";
 import { getCode } from "country-list";
@@ -12,7 +12,7 @@ export async function createCommunity(
     founderId: string,
     isTeamSociety: boolean = false,
     description: string = ""
-)
+): Promise<string>
 {
     const communityData: CommunityJSON = {
         name,
@@ -23,7 +23,8 @@ export async function createCommunity(
         description,
         creationDate: new Date()
     };
-    await addDoc(collection(db, "communities"), communityData);
+    const docRef = await addDoc(collection(db, "communities"), communityData);
+    return docRef.id;
 }
 
 export async function getCommunity(communityId: string): Promise<(CommunityJSON & {id: string})>{
@@ -95,3 +96,18 @@ export async function joinCountryCommunity(uid: string, country: string, role: R
     });
 }
 
+export async function joinOpenCommunity(uid: string, communityId: string, rank: Rank){
+    const targetCommunity: (CommunityJSON & {id: string}) = await getCommunity(communityId);
+    if (targetCommunity.entranceType !== "open") throw new Error("Community is not open for direct join");
+    const membershipDocRef = doc(db, "communities", communityId, "members", uid);
+    const userDocRef = doc(db, "users", uid);
+    const batch = writeBatch(db);
+    batch.set(membershipDocRef, {uid, rank, joinedAt: new Date()});
+    batch.update(userDocRef, {communityIds: arrayUnion(communityId)});
+    await batch.commit();
+}
+
+export async function joinCityCommunity(uid: string, cityCommunityId: string, role: Role){
+    const rank: Rank = (role === "institutional_account"? "senior" : "member");
+    await joinOpenCommunity(uid, cityCommunityId, rank);
+}
