@@ -27,6 +27,7 @@ export interface CommunityJSON{
     entranceType: EntranceType;
     founderId: string;
     creationDate: Date;
+    country?: string;
     isTeamSociety: boolean;
 } 
 
@@ -44,6 +45,7 @@ export class Community{
     public founderId: string;
     public creationDate: Date;
     public isTeamSociety: boolean;
+    public country?: string;
 
     constructor(
         name: string,
@@ -51,12 +53,14 @@ export class Community{
         entranceType: EntranceType,
         founderId: string,
         isTeamSociety: boolean = false,
-        description: string = ""
+        description: string = "",
+        country?: string
     ){
         this.name = name;
         this.type = type;
         this.entranceType = entranceType;
         this.founderId = founderId;
+        this.country = country;
         this.isTeamSociety = isTeamSociety;
         this.description = description;
         this.creationDate = new Date();
@@ -70,6 +74,7 @@ export class Community{
             founderId: this.founderId,
             isTeamSociety: this.isTeamSociety,
             description: this.description,
+            country: this.country,
             creationDate: this.creationDate,
         }
     }

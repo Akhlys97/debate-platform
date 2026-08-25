@@ -69,5 +69,13 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/communities/$(communityId)).data.entranceType == "open";
       }
     }
+    match /cityRequests/{requestId} {
+      allow read: if request.auth != null
+        && (resource.data.uid == request.auth.uid
+            || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == "pending";
+    }
   }
 }

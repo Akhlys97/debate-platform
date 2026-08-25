@@ -1,5 +1,5 @@
 import { CommunityFirestoreData, CommunityJSON, CommunityType, convertCommunityFirestoreData, EntranceType, Rank } from "@/types/community";
-import { addDoc, arrayUnion, collection, doc, getDoc, runTransaction, writeBatch } from "firebase/firestore";
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, runTransaction, where, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 import { convertFirestoreData, UserFirestoreData } from "@/types/user";
 import { getCode } from "country-list";
@@ -11,7 +11,8 @@ export async function createCommunity(
     entranceType: EntranceType,
     founderId: string,
     isTeamSociety: boolean = false,
-    description: string = ""
+    description: string = "",
+    country?: string
 ): Promise<string>
 {
     const communityData: CommunityJSON = {
@@ -21,6 +22,7 @@ export async function createCommunity(
         founderId,
         isTeamSociety,
         description,
+        country,
         creationDate: new Date()
     };
     const docRef = await addDoc(collection(db, "communities"), communityData);
@@ -110,4 +112,17 @@ export async function joinOpenCommunity(uid: string, communityId: string, rank: 
 export async function joinCityCommunity(uid: string, cityCommunityId: string, role: Role){
     const rank: Rank = (role === "institutional_account"? "senior" : "member");
     await joinOpenCommunity(uid, cityCommunityId, rank);
+}
+
+export async function getCityCommunities(country: string): Promise<(CommunityJSON & { id: string })[]>{
+    const q = query(
+        collection(db, "communities"),
+        where("type", "==", "city"),
+        where("country", "==", country)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnap) => {
+        const data = convertCommunityFirestoreData(docSnap.data() as CommunityFirestoreData);
+        return {...data, id: docSnap.id};
+    });
 }
