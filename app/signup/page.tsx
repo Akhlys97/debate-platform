@@ -68,16 +68,19 @@ export default function SignUpScreen(){
     };
     try{
       const user = await signUpUser(formData, password);
-      try{
-        await joinCountryCommunity(user.uid, user.country, user.role);
+      if (user.role !== "institutional_account") {
+        try {
+          await joinCountryCommunity(user.uid, user.country, user.role);
+        } catch (joinError) {
+          console.error("Community auto-join failed:", joinError);
+        }
       }
-      catch (joinError){
-        console.error("Community auto-join failed:", joinError);
-      }
-      if(isInstitutionalAccount(user)){
+
+      if (isInstitutionalAccount(user)) {
         router.push(user.verificationStatus === "approved" ? "/" : "/apply");
+      } else {
+        router.push("/onboarding/cities");
       }
-      else setSuccessMessage("Successfully signed up");
     }
     catch (error){
       setErrorMessage("Signup wasn't completed successfully. Try again.");
