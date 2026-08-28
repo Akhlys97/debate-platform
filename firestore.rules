@@ -49,6 +49,7 @@ service cloud.firestore {
     match /communities/{communityId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
+        && request.resource.data.founderId == request.auth.uid
         && request.resource.data.type != "global"
         && (
           request.resource.data.type != "city"
@@ -60,13 +61,22 @@ service cloud.firestore {
             communityId.matches('^country_[A-Z]{2}$')
             && existsAfter(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
           )
+        )
+        && (
+          request.resource.data.type != "institution"
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verificationStatus', null) == "approved"
         );
-
       match /members/{memberUid} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && request.auth.uid == memberUid
+          && request.resource.data.rank in ["member", "senior"]
           && getAfter(/databases/$(database)/documents/communities/$(communityId)).data.entranceType == "open";
+        allow create: if request.auth != null
+          && request.auth.uid == memberUid
+          && request.resource.data.rank == "leader"
+          && !exists(/databases/$(database)/documents/communities/$(communityId))
+          && getAfter(/databases/$(database)/documents/communities/$(communityId)).data.founderId == request.auth.uid;
       }
     }
     match /cityRequests/{requestId} {

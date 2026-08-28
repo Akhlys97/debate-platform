@@ -82,7 +82,7 @@ export async function joinCountryCommunity(uid: string, country: string, role: R
                 description: "",
                 type: "country",
                 entranceType: "open",
-                founderId: "system",
+                founderId: uid,
                 isTeamSociety: false,
                 creationDate: new Date(),
             });
@@ -125,4 +125,22 @@ export async function getCityCommunities(country: string): Promise<(CommunityJSO
         const data = convertCommunityFirestoreData(docSnap.data() as CommunityFirestoreData);
         return {...data, id: docSnap.id};
     });
+}
+
+export async function foundCommunity(
+    uid: string, 
+    name: string, 
+    type: CommunityType, 
+    entranceType: EntranceType, 
+    description: string = ""): Promise<string>
+{
+    const communityDocRef = doc(collection(db, "communities"));
+    const membershipDocRef = doc(db, "communities", communityDocRef.id, "members", uid);
+    const userDocRef = doc(db, "users", uid);
+    const batch = writeBatch(db);
+    batch.set(communityDocRef, {founderId: uid, type, entranceType, name, description, isTeamSociety: false, creationDate: new Date()});
+    batch.set(membershipDocRef, {uid, rank: "leader", joinedAt: new Date()});
+    batch.update(userDocRef, {communityIds: arrayUnion(communityDocRef.id)});
+    await batch.commit();
+    return communityDocRef.id;
 }
