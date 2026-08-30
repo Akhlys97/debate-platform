@@ -132,13 +132,14 @@ export async function foundCommunity(
     name: string, 
     type: CommunityType, 
     entranceType: EntranceType, 
-    description: string = ""): Promise<string>
+    description: string = "",
+    isTeamSociety: boolean = false): Promise<string>
 {
     const communityDocRef = doc(collection(db, "communities"));
     const membershipDocRef = doc(db, "communities", communityDocRef.id, "members", uid);
     const userDocRef = doc(db, "users", uid);
     const batch = writeBatch(db);
-    batch.set(communityDocRef, {founderId: uid, type, entranceType, name, description, isTeamSociety: false, creationDate: new Date()});
+    batch.set(communityDocRef, {founderId: uid, type, entranceType, name, description, isTeamSociety, creationDate: new Date()});
     batch.set(membershipDocRef, {uid, rank: "leader", joinedAt: new Date()});
     batch.update(userDocRef, {communityIds: arrayUnion(communityDocRef.id)});
     await batch.commit();

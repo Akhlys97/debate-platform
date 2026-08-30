@@ -65,6 +65,10 @@ service cloud.firestore {
         && (
           request.resource.data.type != "institution"
           || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verificationStatus', null) == "approved"
+        )
+        && (
+          request.resource.data.isTeamSociety != true
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach"
         );
       match /members/{memberUid} {
         allow read: if request.auth != null;

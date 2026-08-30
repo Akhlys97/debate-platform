@@ -18,11 +18,13 @@ export default function CreateCommunityModal({ isOpen, onClose }: CreateCommunit
   const [description, setDescription] = useState("");
   const [type, setType] = useState<CommunityType | null>(null);
   const [entranceType, setEntranceType] = useState<EntranceType | null>(null);
+  const [isTeamSociety, setIsTeamSociety] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [showInstitutionTooltip, setShowInstitutionTooltip] = useState(false);
+  const [showTeamSocietyTooltip, setShowTeamSocietyTooltip] = useState(false);
 
   if (!isOpen || !user) return null;
 
@@ -32,10 +34,13 @@ export default function CreateCommunityModal({ isOpen, onClose }: CreateCommunit
   const institutionDisabledReason = isWrongRole
     ? "Only Institutional Accounts can found Institutions."
     : "Your account must be verified before founding an Institution.";
+  const isTeamSocietyDisabled = user.role !== "coach";
+  const teamSocietyDisabledReason = "Only Coach accounts can found Team societies.";
 
   function resetForm() {
     setName("");
     setDescription("");
+    setIsTeamSociety(false);
     setType(null);
     setEntranceType(null);
     setError(null);
@@ -50,13 +55,17 @@ export default function CreateCommunityModal({ isOpen, onClose }: CreateCommunit
     if (selected === "institution" && isInstitutionDisabled) return;
     setType(selected);
   }
+  function handleToggleTeamSociety(checked: boolean) {
+    if (isTeamSocietyDisabled) return;
+    setIsTeamSociety(checked);
+  }
 
   async function handleSubmit() {
     if (!name || !type || !entranceType || !user) return;
     setSubmitting(true);
     setError(null);
     try {
-      await foundCommunity(user.uid, name, type, entranceType, description);
+      await foundCommunity(user.uid, name, type, entranceType, description, isTeamSociety);
       resetForm();
       onClose();
     } catch (err) {
@@ -145,6 +154,33 @@ export default function CreateCommunityModal({ isOpen, onClose }: CreateCommunit
           </div>
         </div>
 
+        {type === "society" && (
+          <div
+            className={`relative flex items-center gap-2 ${
+              isTeamSocietyDisabled ? "cursor-not-allowed opacity-40" : ""
+            }`}
+            onMouseEnter={() => isTeamSocietyDisabled && setShowTeamSocietyTooltip(true)}
+            onMouseLeave={() => setShowTeamSocietyTooltip(false)}
+          >
+            <input
+              type="checkbox"
+              id="teamSocietyCheckbox"
+              checked={isTeamSociety}
+              onChange={(e) => handleToggleTeamSociety(e.target.checked)}
+              disabled={isTeamSocietyDisabled}
+              className="h-4 w-4"
+            />
+            <label htmlFor="teamSocietyCheckbox" className="text-sm font-medium text-gray-700">
+              Is this a team society?
+            </label>
+            {showTeamSocietyTooltip && (
+              <div className="absolute -top-9 left-0 rounded bg-gray-900 px-2 py-1 text-xs text-white whitespace-nowrap">
+                {teamSocietyDisabledReason}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium text-gray-700">Entrance Type</span>
           <div className="flex gap-2">
@@ -155,8 +191,7 @@ export default function CreateCommunityModal({ isOpen, onClose }: CreateCommunit
                 onClick={() => setEntranceType(option)}
                 className={`flex-1 rounded border-2 px-3 py-2 text-sm capitalize cursor-pointer ${
                   entranceType === option ? "border-blue-500 bg-blue-50" : "border-gray-300"
-                }`}
-                
+                }`} 
               >
                 {option}
               </button>
