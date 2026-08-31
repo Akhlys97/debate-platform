@@ -1,5 +1,5 @@
-import { CommunityFirestoreData, CommunityJSON, CommunityType, convertCommunityFirestoreData, EntranceType, Rank } from "@/types/community";
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, runTransaction, where, writeBatch } from "firebase/firestore";
+import { CommunityFirestoreData, CommunityJSON, CommunityType, convertCommunityFirestoreData, EntranceType, MembershipFirestoreData, Rank } from "@/types/community";
+import { addDoc, arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, query, runTransaction, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 import { convertFirestoreData, UserFirestoreData } from "@/types/user";
 import { getCode } from "country-list";
@@ -144,4 +144,68 @@ export async function foundCommunity(
     batch.update(userDocRef, {communityIds: arrayUnion(communityDocRef.id)});
     await batch.commit();
     return communityDocRef.id;
+}
+
+export async function setMemberRank(actorUid: string, communityId: string, targetUid: string, newRank: Rank){
+    if (newRank === "leader") throw new Error("You can't appoint another leader");
+    if (actorUid === targetUid) throw new Error("You can't change your own rank");
+
+    const actorDocRef = doc(db, "communities", communityId, "members", actorUid);
+    const actorDocSnap = await getDoc(actorDocRef);
+    if (!actorDocSnap.exists()) throw new Error("The actor doesn't exist in this community");
+    const actorRawData = actorDocSnap.data() as MembershipFirestoreData;
+    const actorRank = actorRawData.rank;
+
+    const targetDocRef = doc(db, "communities", communityId, "members", targetUid);
+    const targetDocSnap = await getDoc(targetDocRef);
+    if (!targetDocSnap.exists()) throw new Error("The target for this action doesn't exist in this community");
+    const targetRawData = targetDocSnap.data() as MembershipFirestoreData;
+    const targetRank = targetRawData.rank;
+
+    if (actorRank === "senior" || actorRank === "member") throw new Error("You don't have the authority to perform this action");
+    if (actorRank === "admin" && newRank === "admin") throw new Error("Admins can't appoint admins");
+    if (actorRank === "admin" && (targetRank === "admin" || targetRank === "leader")) throw new Error("Admins don't have authority over other admins and the leader");
+    
+    await updateDoc(targetDocRef, { rank: newRank });
+}
+
+export async function transferLeadership(currentLeaderUid: string, communityId: string, newLeaderUid: string){
+    if (currentLeaderUid === newLeaderUid) throw new Error("You can't transfer leadership to yourself");
+    
+    const community = await getCommunity(communityId);
+    if (community.type === "institution") throw new Error("Leadership transfer isn't allowed in institutional communities");
+
+    const currentLeaderMembershipDocRef = doc(db, "communities", communityId, "members", currentLeaderUid);
+    const currentLeaderMembershipDocSnap = await getDoc(currentLeaderMembershipDocRef);
+    if (!currentLeaderMembershipDocSnap.exists()) throw new Error("The current leader doesn't exist in this community");
+    
+    const currentLeaderRawData = currentLeaderMembershipDocSnap.data() as MembershipFirestoreData;
+    if(currentLeaderRawData.rank !== "leader") throw new Error ("You can't transfer leadership when you are not the leader");
+
+    const newLeaderMembershipDocRef = doc(db, "communities", communityId, "members", newLeaderUid);
+    const newLeaderMembershipDocSnap = await getDoc(newLeaderMembershipDocRef);
+    if (!newLeaderMembershipDocSnap.exists()) throw new Error("The new leader doesn't exist in this community");
+
+    const batch = writeBatch(db);
+    batch.update(currentLeaderMembershipDocRef, {rank: "admin"});
+    batch.update(newLeaderMembershipDocRef, {rank: "leader"});
+    await batch.commit();
+}
+
+export async function leaveCommunity(uid: string, communityId: string){
+    const userDocRef = doc(db, "users", uid);
+    const userDocSnap = await getDoc(userDocRef);
+    if (!userDocSnap.exists()) throw new Error("This user doesn't exist");
+
+    const userMembershipDocRef = doc(db, "communities", communityId, "members", uid);
+    const userMembershipDocSnap = await getDoc(userMembershipDocRef);
+    if (!userMembershipDocSnap.exists()) throw new Error("You cannot leave a community that you are not a member of");
+
+    const userRawData = userMembershipDocSnap.data() as MembershipFirestoreData;
+    if(userRawData.rank === "leader") throw new Error ("Leaders must transfer leadership before leaving. Please transfer your leadership (transferLeadership) first.");
+
+    const batch = writeBatch(db);
+    batch.delete(userMembershipDocRef);
+    batch.update(userDocRef, {communityIds: arrayRemove(communityId)});
+    await batch.commit();
 }

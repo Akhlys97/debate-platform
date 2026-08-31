@@ -14,6 +14,24 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/communities/$(added[0])/members/$(uid));
     }
 
+    function isValidSingleCommunityLeave(uid, before, after) {
+      let removed = newlyAddedIds(after, before);
+      return before.size() == after.size() + 1
+        && before.hasAll(after)
+        && removed.size() == 1
+        && !existsAfter(/databases/$(database)/documents/communities/$(removed[0])/members/$(uid));
+    }
+
+    function canChangeRank(actorRank, targetRank, newRank) {
+      return actorRank == "leader"
+        || (
+          actorRank == "admin"
+          && newRank != "admin"
+          && targetRank != "admin"
+          && targetRank != "leader"
+        );
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid && request.auth.uid == request.resource.data.uid;
@@ -23,6 +41,7 @@ service cloud.firestore {
         && (
           request.resource.data.communityIds == resource.data.communityIds
           || isValidSingleCommunityJoin(uid, resource.data.communityIds, request.resource.data.communityIds)
+          || isValidSingleCommunityLeave(uid, resource.data.communityIds, request.resource.data.communityIds)
         );
       allow update: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
@@ -81,6 +100,37 @@ service cloud.firestore {
           && request.resource.data.rank == "leader"
           && !exists(/databases/$(database)/documents/communities/$(communityId))
           && getAfter(/databases/$(database)/documents/communities/$(communityId)).data.founderId == request.auth.uid;
+        allow update: if request.auth != null
+          && request.auth.uid != memberUid
+          && request.resource.data.rank in ["admin", "senior", "member"]
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["rank"])
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+          && canChangeRank(
+               get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank,
+               resource.data.rank,
+               request.resource.data.rank
+             );
+        // Leader transfer, step 1: outgoing Leader demotes themselves to Admin.
+        allow update: if request.auth != null
+          && request.auth.uid == memberUid
+          && resource.data.rank == "leader"
+          && request.resource.data.rank == "admin"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["rank"])
+          && get(/databases/$(database)/documents/communities/$(communityId)).data.type != "institution";
+        // Leader transfer, step 2: current Leader promotes a different member to Leader,
+        // proven genuine by requiring their own doc to show "admin" after this same batch.
+        allow update: if request.auth != null
+          && request.auth.uid != memberUid
+          && request.resource.data.rank == "leader"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["rank"])
+          && get(/databases/$(database)/documents/communities/$(communityId)).data.type != "institution"
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+          && get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "leader"
+          && getAfter(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "admin";
+        // Leave community: self-deletion, blocked while still Leader (must transfer first).
+        allow delete: if request.auth != null
+          && request.auth.uid == memberUid
+          && resource.data.rank != "leader";
       }
     }
     match /cityRequests/{requestId} {
