@@ -31,6 +31,10 @@ export async function sendInvite(inviterUid: string, communityId: string, invite
     );
     const pendingInvites = await getDocs(q);
     if(!pendingInvites.empty) throw new Error("There is already a pending invite for this invitee");
-    
+
     await addDoc(collection(db, "invites"), invitation);
+}
+
+export async function acceptInvite(inviteeUid: string, inviteId: string){
+    
 }
