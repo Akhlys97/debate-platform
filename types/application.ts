@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+export type ApplicationFirestoreData = Omit<ApplicationJSON, "submittedAt"> & { submittedAt: Timestamp }
 
 export interface ApplicationJSON{
    uid: string;
@@ -7,8 +8,6 @@ export interface ApplicationJSON{
    status: "pending" | "approved" | "rejected";
    submittedAt: Date; 
 }
-
-export type ApplicationFirestoreData = Omit<ApplicationJSON, "submittedAt"> & { submittedAt: Timestamp }
 
 export function convertApplicationFirestoreData(raw: ApplicationFirestoreData): ApplicationJSON{
     return{
