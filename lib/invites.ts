@@ -1,7 +1,7 @@
-import { addDoc, collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 import { MembershipFirestoreData, Rank } from "@/types/community";
-import { InviteJSON } from "@/types/invite";
+import { InviteFirestoreData, InviteJSON } from "@/types/invite";
 
 export async function sendInvite(inviterUid: string, communityId: string, inviteeUid: string){
     const inviterMembershipDocRef = doc(db, "communities", communityId, "members", inviterUid);
@@ -36,5 +36,35 @@ export async function sendInvite(inviterUid: string, communityId: string, invite
 }
 
 export async function acceptInvite(inviteeUid: string, inviteId: string){
+    const inviteDocRef = doc(db, "invites", inviteId);
+    const inviteDocSnap = await getDoc(inviteDocRef);
+    if(!inviteDocSnap.exists()) throw new Error("The invite doesn't exist.");
+
+    const inviteeDocRef = doc(db, "users", inviteeUid);
     
+    const inviteRawData = inviteDocSnap.data() as InviteFirestoreData;
+    if(inviteRawData.inviteeUid !== inviteeUid) throw new Error("This invitation doesn't belong to you");
+    if(inviteRawData.status !== "pending") throw new Error("An invite can only be resolved once");
+
+    const inviteeMembershipDocRef = doc(db, "communities", inviteRawData.communityId, "members", inviteeUid);
+    const inviteeMembershipDocSnap = await getDoc(inviteeMembershipDocRef);
+    if(inviteeMembershipDocSnap.exists()) throw new Error("You are already a member");
+
+    const batch = writeBatch(db);
+    batch.set(inviteeMembershipDocRef, {uid: inviteeUid, rank: "member", joinedAt: new Date()});
+    batch.update(inviteDocRef, {status: "accepted"});
+    batch.update(inviteeDocRef, {communityIds: arrayUnion(inviteRawData.communityId)});
+    await batch.commit();
+}
+
+export async function declineInvite(inviteeUid: string, inviteId: string){
+    const inviteDocRef = doc(db, "invites", inviteId);
+    const inviteDocSnap = await getDoc(inviteDocRef);
+    if(!inviteDocSnap.exists()) throw new Error("The invite doesn't exist.");
+
+    const inviteRawData = inviteDocSnap.data() as InviteFirestoreData;
+    if(inviteRawData.inviteeUid !== inviteeUid) throw new Error("This invitation doesn't belong to you");
+    if(inviteRawData.status !== "pending") throw new Error("An invite can only be resolved once");
+
+    await updateDoc(inviteDocRef, {status: "declined"});
 }
