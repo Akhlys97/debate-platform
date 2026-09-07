@@ -1,7 +1,7 @@
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch } from "firebase/firestore";
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 import { MembershipFirestoreData, Rank } from "@/types/community";
-import { InviteFirestoreData, InviteJSON } from "@/types/invite";
+import { convertInviteFirestoreData, InviteFirestoreData, InviteJSON } from "@/types/invite";
 
 export async function sendInvite(inviterUid: string, communityId: string, inviteeUid: string){
     const inviterMembershipDocRef = doc(db, "communities", communityId, "members", inviterUid);
@@ -26,13 +26,15 @@ export async function sendInvite(inviterUid: string, communityId: string, invite
     const q = query(
         collection(db, "invites"),
         where("communityId", "==", communityId),
+        where("inviterUid", "==", inviterUid),
         where("inviteeUid", "==", inviteeUid),
         where("status", "==", "pending")
     );
     const pendingInvites = await getDocs(q);
     if(!pendingInvites.empty) throw new Error("There is already a pending invite for this invitee");
 
-    await addDoc(collection(db, "invites"), invitation);
+    const inviteId = `${communityId}_${inviteeUid}`;
+    await setDoc(doc(db, "invites", inviteId), invitation);
 }
 
 export async function acceptInvite(inviteeUid: string, inviteId: string){
@@ -67,4 +69,17 @@ export async function declineInvite(inviteeUid: string, inviteId: string){
     if(inviteRawData.status !== "pending") throw new Error("An invite can only be resolved once");
 
     await updateDoc(inviteDocRef, {status: "declined"});
+}
+
+export async function getUserInvites(inviteeUid: string): Promise<(InviteJSON & { id: string })[]>{
+    const q = query(
+        collection(db, "invites"),
+        where("inviteeUid", "==", inviteeUid),
+        where("status", "==", "pending")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnap) => {
+        const data = convertInviteFirestoreData(docSnap.data() as InviteFirestoreData);
+        return {...data, id: docSnap.id};
+    });
 }

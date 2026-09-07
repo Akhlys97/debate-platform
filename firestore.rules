@@ -100,6 +100,16 @@ service cloud.firestore {
           && request.resource.data.rank == "leader"
           && !exists(/databases/$(database)/documents/communities/$(communityId))
           && getAfter(/databases/$(database)/documents/communities/$(communityId)).data.founderId == request.auth.uid;
+        // Invite-based join: requires a genuine, matching, still-pending invite at the
+        // deterministic invites/{communityId}_{memberUid} path, proven paired by requiring
+        // that same invite to show "accepted" after this same batch.
+        allow create: if request.auth != null
+          && request.auth.uid == memberUid
+          && request.resource.data.rank == "member"
+          && exists(/databases/$(database)/documents/invites/$(communityId + "_" + memberUid))
+          && get(/databases/$(database)/documents/invites/$(communityId + "_" + memberUid)).data.status == "pending"
+          && get(/databases/$(database)/documents/invites/$(communityId + "_" + memberUid)).data.inviteeUid == memberUid
+          && getAfter(/databases/$(database)/documents/invites/$(communityId + "_" + memberUid)).data.status == "accepted";
         allow update: if request.auth != null
           && request.auth.uid != memberUid
           && request.resource.data.rank in ["admin", "senior", "member"]
@@ -140,6 +150,44 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == "pending";
+    }
+    match /invites/{inviteId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.inviterUid || request.auth.uid == resource.data.inviteeUid);
+      allow create: if request.auth != null
+        && request.resource.data.inviterUid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && exists(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid))
+        && (
+          get(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid)).data.rank == "leader"
+          || get(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid)).data.rank == "admin"
+        );
+      // Decline: simple status flip, no pairing needed.
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.inviteeUid
+        && resource.data.status == "pending"
+        && request.resource.data.status == "declined"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"]);
+      // Accept: proven genuine by requiring a real membership doc to exist after this same batch.
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.inviteeUid
+        && resource.data.status == "pending"
+        && request.resource.data.status == "accepted"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])
+        && existsAfter(/databases/$(database)/documents/communities/$(resource.data.communityId)/members/$(request.auth.uid));
+      // Re-invite: sender resets a previously-declined invite back to pending, using the
+      // same deterministic slot. inviterUid may change (a different Leader/Admin than
+      // last time), so it's allowed to change alongside status and createdAt.
+      allow update: if request.auth != null
+        && request.resource.data.inviterUid == request.auth.uid
+        && resource.data.status == "declined"
+        && request.resource.data.status == "pending"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "createdAt", "inviterUid"])
+        && exists(/databases/$(database)/documents/communities/$(resource.data.communityId)/members/$(request.auth.uid))
+        && (
+          get(/databases/$(database)/documents/communities/$(resource.data.communityId)/members/$(request.auth.uid)).data.rank == "leader"
+          || get(/databases/$(database)/documents/communities/$(resource.data.communityId)/members/$(request.auth.uid)).data.rank == "admin"
+        );
     }
   }
 }
