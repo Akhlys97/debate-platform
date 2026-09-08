@@ -32,6 +32,15 @@ service cloud.firestore {
         );
     }
 
+    function isValidRequestAcceptedJoin(uid, before, after) {
+      let added = newlyAddedIds(before, after);
+      return after.size() == before.size() + 1
+        && after.hasAll(before)
+        && added.size() == 1
+        && getAfter(/databases/$(database)/documents/communities/$(added[0])/joinRequests/$(added[0] + "_" + uid)).data.status == "accepted"
+        && getAfter(/databases/$(database)/documents/communities/$(added[0])/joinRequests/$(added[0] + "_" + uid)).data.reviewerUid == request.auth.uid;
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid && request.auth.uid == request.resource.data.uid;
@@ -46,6 +55,10 @@ service cloud.firestore {
       allow update: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["verificationStatus"]);
+      allow update: if request.auth != null
+        && request.auth.uid != uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["communityIds"])
+        && isValidRequestAcceptedJoin(uid, resource.data.communityIds, request.resource.data.communityIds);
     }
 
     match /applications/{applicationId} {
@@ -100,9 +113,6 @@ service cloud.firestore {
           && request.resource.data.rank == "leader"
           && !exists(/databases/$(database)/documents/communities/$(communityId))
           && getAfter(/databases/$(database)/documents/communities/$(communityId)).data.founderId == request.auth.uid;
-        // Invite-based join: requires a genuine, matching, still-pending invite at the
-        // deterministic invites/{communityId}_{memberUid} path, proven paired by requiring
-        // that same invite to show "accepted" after this same batch.
         allow create: if request.auth != null
           && request.auth.uid == memberUid
           && request.resource.data.rank == "member"
@@ -110,6 +120,18 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/invites/$(communityId + "_" + memberUid)).data.status == "pending"
           && get(/databases/$(database)/documents/invites/$(communityId + "_" + memberUid)).data.inviteeUid == memberUid
           && getAfter(/databases/$(database)/documents/invites/$(communityId + "_" + memberUid)).data.status == "accepted";
+        allow create: if request.auth != null
+          && request.auth.uid != memberUid
+          && request.resource.data.rank == "member"
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+          && (
+            get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "leader"
+            || get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "admin"
+          )
+          && exists(/databases/$(database)/documents/communities/$(communityId)/joinRequests/$(communityId + "_" + memberUid))
+          && get(/databases/$(database)/documents/communities/$(communityId)/joinRequests/$(communityId + "_" + memberUid)).data.status == "pending"
+          && get(/databases/$(database)/documents/communities/$(communityId)/joinRequests/$(communityId + "_" + memberUid)).data.requesterUid == memberUid
+          && getAfter(/databases/$(database)/documents/communities/$(communityId)/joinRequests/$(communityId + "_" + memberUid)).data.status == "accepted";
         allow update: if request.auth != null
           && request.auth.uid != memberUid
           && request.resource.data.rank in ["admin", "senior", "member"]
@@ -120,15 +142,12 @@ service cloud.firestore {
                resource.data.rank,
                request.resource.data.rank
              );
-        // Leader transfer, step 1: outgoing Leader demotes themselves to Admin.
         allow update: if request.auth != null
           && request.auth.uid == memberUid
           && resource.data.rank == "leader"
           && request.resource.data.rank == "admin"
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["rank"])
           && get(/databases/$(database)/documents/communities/$(communityId)).data.type != "institution";
-        // Leader transfer, step 2: current Leader promotes a different member to Leader,
-        // proven genuine by requiring their own doc to show "admin" after this same batch.
         allow update: if request.auth != null
           && request.auth.uid != memberUid
           && request.resource.data.rank == "leader"
@@ -137,10 +156,45 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
           && get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "leader"
           && getAfter(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "admin";
-        // Leave community: self-deletion, blocked while still Leader (must transfer first).
         allow delete: if request.auth != null
           && request.auth.uid == memberUid
           && resource.data.rank != "leader";
+      }
+      match /joinRequests/{requestId} {
+        allow read: if request.auth != null
+          && (
+            request.auth.uid == resource.data.requesterUid
+            || (
+              exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+              && get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank in ["leader", "admin"]
+            )
+          );
+        allow create: if request.auth != null
+          && request.resource.data.requesterUid == request.auth.uid
+          && request.resource.data.communityId == communityId
+          && request.resource.data.status == "pending"
+          && get(/databases/$(database)/documents/communities/$(communityId)).data.entranceType == "limited";
+        allow update: if request.auth != null
+          && resource.data.status == "pending"
+          && request.resource.data.status == "declined"
+          && request.resource.data.reviewerUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "reviewerUid"])
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+          && (
+            get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "leader"
+            || get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "admin"
+          );
+        allow update: if request.auth != null
+          && resource.data.status == "pending"
+          && request.resource.data.status == "accepted"
+          && request.resource.data.reviewerUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "reviewerUid"])
+          && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+          && (
+            get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "leader"
+            || get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.rank == "admin"
+          )
+          && existsAfter(/databases/$(database)/documents/communities/$(communityId)/members/$(resource.data.requesterUid));
       }
     }
     match /cityRequests/{requestId} {
@@ -162,22 +216,17 @@ service cloud.firestore {
           get(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid)).data.rank == "leader"
           || get(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid)).data.rank == "admin"
         );
-      // Decline: simple status flip, no pairing needed.
       allow update: if request.auth != null
         && request.auth.uid == resource.data.inviteeUid
         && resource.data.status == "pending"
         && request.resource.data.status == "declined"
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"]);
-      // Accept: proven genuine by requiring a real membership doc to exist after this same batch.
       allow update: if request.auth != null
         && request.auth.uid == resource.data.inviteeUid
         && resource.data.status == "pending"
         && request.resource.data.status == "accepted"
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])
         && existsAfter(/databases/$(database)/documents/communities/$(resource.data.communityId)/members/$(request.auth.uid));
-      // Re-invite: sender resets a previously-declined invite back to pending, using the
-      // same deterministic slot. inviterUid may change (a different Leader/Admin than
-      // last time), so it's allowed to change alongside status and createdAt.
       allow update: if request.auth != null
         && request.resource.data.inviterUid == request.auth.uid
         && resource.data.status == "declined"
